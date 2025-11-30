@@ -77,9 +77,9 @@ router.post(
     // Step 3: Cache the result
     await cacheService.setItinerary(params, result.data);
     
-    // Step 4: Save to Firestore (if user is authenticated)
+    // Step 4: Save to Firestore (if user is authenticated and Firebase is available)
     let savedId = null;
-    if (req.user) {
+    if (req.user && db) {
       try {
         const itineraryDoc = {
           ...result.data,
@@ -98,6 +98,8 @@ router.post(
         console.error('Firestore save error:', error);
         // Continue anyway - saving is optional
       }
+    } else if (!db) {
+      console.log('⚠️  Firestore not configured - itinerary not saved');
     }
     
     res.json({
@@ -120,6 +122,13 @@ router.post(
   optionalAuth,
   asyncHandler(async (req, res) => {
     const { itineraryId } = req.params;
+    
+    if (!db) {
+      return res.status(503).json({
+        success: false,
+        error: 'Firestore not configured - this feature is unavailable'
+      });
+    }
     
     // Fetch itinerary from Firestore
     const doc = await db.collection(collections.ITINERARIES).doc(itineraryId).get();
@@ -162,7 +171,7 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       redis: 'connected',
-      firebase: 'connected',
+      firebase: db ? 'connected' : 'not configured (optional)',
       gemini: 'configured'
     }
   });
