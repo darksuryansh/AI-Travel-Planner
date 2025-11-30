@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # -----------------------------
+  # 1. REDIS (Cache & Real-time)
+  # -----------------------------
+  redis:
+    image: redis:alpine
+    container_name: intellitrek-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - intellitrek-network
+
+  # -----------------------------
+  # 2. KAFKA (KRaft Mode - No Zookeeper)
+  # -----------------------------
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: intellitrek-kafka
+    ports:
+      - "9092:9092" # Port for your Laptop (Node.js running locally)
+    environment:
+      # --- Identity ---
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk' # Random ID required for KRaft
+      
+      # --- Networking (The Tricky Part) ---
+      # 1. CONTROLLER: Internal voting (Port 29093)
+      # 2. PLAINTEXT: Internal Docker network (Port 29092) -> For other containers
+      # 3. EXTERNAL: External access (Port 9092) -> For your localhost
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      
+      # --- Controller Config ---
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      
+      # --- Data Config ---
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - intellitrek-network
+
+  # -----------------------------
+  # 3. KAFKA UI (Visual Dashboard)
+  # -----------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: intellitrek-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+    networks:
+      - intellitrek-network
+
+# -----------------------------
+# NETWORKS & VOLUMES
+# -----------------------------
+networks:
+  intellitrek-network:
+    driver: bridge
+
+volumes:
+  redis_data:

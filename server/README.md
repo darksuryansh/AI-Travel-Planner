@@ -126,9 +126,17 @@ wsl redis-server
 
 #### Start Kafka (Optional)
 ```powershell
-# Using Docker Compose
-docker-compose up -d kafka zookeeper
+# Using the setup script (EASIEST)
+.\setup-kafka.ps1 start
+
+# OR using Docker Compose directly
+docker-compose -f docker-compose.kafka.yml up -d
+
+# Check status
+.\setup-kafka.ps1 status
 ```
+
+**📖 Need help with Kafka?** See [KAFKA_QUICKSTART.md](./KAFKA_QUICKSTART.md) for quick setup or [KAFKA_SETUP.md](./KAFKA_SETUP.md) for detailed instructions.
 
 #### Start Main Server
 ```powershell
