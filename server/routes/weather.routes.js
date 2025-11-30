@@ -1,6 +1,6 @@
 import express from 'express';
-import { getWeatherForecast, getAirQuality, calculateOptimalDay } from '../services/weatherService.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { getWeatherForecast, getAirQuality } from '../services/weatherService.js';
+import { verifyAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ const router = express.Router();
  * @query   {number} lng - Longitude
  * @query   {string} [location] - Location name (optional, for display)
  */
-router.get('/forecast', authenticateToken, async (req, res, next) => {
+router.get('/forecast', verifyAuth, async (req, res, next) => {
   try {
     const { lat, lng, location } = req.query;
 
@@ -48,7 +48,7 @@ router.get('/forecast', authenticateToken, async (req, res, next) => {
  * @query   {number} lng - Longitude
  * @query   {string} [location] - Location name (optional, for display)
  */
-router.get('/aqi', authenticateToken, async (req, res, next) => {
+router.get('/aqi', verifyAuth, async (req, res, next) => {
   try {
     const { lat, lng, location } = req.query;
 
@@ -87,7 +87,7 @@ router.get('/aqi', authenticateToken, async (req, res, next) => {
  * @query   {number} lng - Longitude
  * @query   {string} [location] - Location name (optional, for display)
  */
-router.get('/optimal-day', authenticateToken, async (req, res, next) => {
+router.get('/optimal-day', verifyAuth, async (req, res, next) => {
   try {
     const { lat, lng, location } = req.query;
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import { searchNearbyPlaces, getPlaceDetails, getPhotoUrl, findAccommodations, getAutocompleteSuggestions } from '../services/googleMapsService.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { verifyAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -13,7 +13,7 @@ const router = express.Router();
  * @query   {string} category - Category (stays|fun|sightseeing|shopping|transport|food)
  * @query   {number} [radius=2000] - Search radius in meters
  */
-router.get('/nearby', authenticateToken, async (req, res, next) => {
+router.get('/nearby', verifyAuth, async (req, res, next) => {
   try {
     const { lat, lng, category, radius = 2000 } = req.query;
 
@@ -48,7 +48,7 @@ router.get('/nearby', authenticateToken, async (req, res, next) => {
  * @desc    Get detailed information about a specific place
  * @access  Private
  */
-router.get('/:placeId', authenticateToken, async (req, res, next) => {
+router.get('/:placeId', verifyAuth, async (req, res, next) => {
   try {
     const { placeId } = req.params;
 
@@ -75,7 +75,7 @@ router.get('/:placeId', authenticateToken, async (req, res, next) => {
  * @access  Private
  * @query   {number} [maxWidth=800] - Maximum photo width
  */
-router.get('/photo/:photoReference', authenticateToken, async (req, res, next) => {
+router.get('/photo/:photoReference', verifyAuth, async (req, res, next) => {
   try {
     const { photoReference } = req.params;
     const { maxWidth = 800 } = req.query;
@@ -106,7 +106,7 @@ router.get('/photo/:photoReference', authenticateToken, async (req, res, next) =
  * @query   {string} [budget=moderate] - Budget level (economy|moderate|luxury)
  * @query   {number} [radius=5000] - Search radius in meters
  */
-router.get('/accommodations/search', authenticateToken, async (req, res, next) => {
+router.get('/accommodations/search', verifyAuth, async (req, res, next) => {
   try {
     const { lat, lng, budget = 'moderate', radius = 5000 } = req.query;
 
@@ -143,7 +143,7 @@ router.get('/accommodations/search', authenticateToken, async (req, res, next) =
  * @query   {string} input - Search query
  * @query   {string} [sessionToken] - Session token for billing optimization
  */
-router.get('/autocomplete', authenticateToken, async (req, res, next) => {
+router.get('/autocomplete', verifyAuth, async (req, res, next) => {
   try {
     const { input, sessionToken } = req.query;
 
