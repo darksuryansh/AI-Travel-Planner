@@ -3,124 +3,74 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const USE_FIELD_MASKING = process.env.GOOGLE_MAPS_USE_FIELD_MASKING === 'true';
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'google-maps28.p.rapidapi.com';
 
-// Category to Google Places type mapping
+// Category to search type mapping
 export const CATEGORY_TYPE_MAP = {
   stays: ['lodging', 'hotel', 'hostel'],
-  fun: ['amusement_park', 'aquarium', 'bowling_alley', 'night_club', 'swimming_pool', 'casino', 'stadium'],
-  sightseeing: ['tourist_attraction', 'park', 'museum', 'art_gallery', 'landmark', 'historical_landmark'],
-  shopping: ['shopping_mall', 'market', 'department_store', 'clothing_store', 'souvenir_store'],
-  transport: ['car_rental', 'bicycle_store', 'bus_station', 'train_station', 'airport'],
-  food: ['restaurant', 'cafe', 'bakery', 'bar', 'meal_delivery', 'meal_takeaway']
+  fun: ['amusement_park', 'aquarium', 'night_club', 'casino'],
+  sightseeing: ['tourist_attraction', 'museum', 'park', 'landmark'],
+  shopping: ['shopping_mall', 'store'],
+  transport: ['bus_station', 'train_station', 'airport'],
+  food: ['restaurant', 'cafe', 'bakery', 'bar']
 };
 
-// Field mask for cost optimization (only fetch essential fields)
-const ESSENTIAL_FIELDS = [
-  'places.id',
-  'places.displayName',
-  'places.formattedAddress',
-  'places.location',
-  'places.rating',
-  'places.userRatingCount',
-  'places.types',
-  'places.photos',
-  'places.priceLevel',
-  'places.internationalPhoneNumber'
-];
-
-const DETAILED_FIELDS = [
-  ...ESSENTIAL_FIELDS,
-  'places.websiteUri',
-  'places.regularOpeningHours',
-  'places.reviews',
-  'places.editorialSummary'
-];
-
 /**
- * Search for nearby places using Google Maps Places API (New)
+ * Search for nearby places using RapidAPI Google Maps
  */
-export const searchNearbyPlaces = async (options) => {
+export const searchNearbyPlaces = async (location, category, radius = 5000) => {
   try {
-    const {
-      location, // { lat, lng }
-      category, // 'stays', 'fun', 'sightseeing', etc.
-      radius = 5000, // meters
-      maxResults = 20,
-      includeDetails = false
-    } = options;
-
-    if (!GOOGLE_MAPS_API_KEY) {
-      throw new Error('Google Maps API key not configured');
+    if (!RAPIDAPI_KEY) {
+      throw new Error('RapidAPI key not configured');
     }
 
-    const types = CATEGORY_TYPE_MAP[category] || [];
+    const types = CATEGORY_TYPE_MAP[category] || ['tourist_attraction'];
+    const type = types[0];
     
-    // Use Places API (New) - Nearby Search
-    const url = 'https://places.googleapis.com/v1/places:searchNearby';
+    const url = 'https://google-maps28.p.rapidapi.com/maps/api/place/nearbysearch/json';
     
-    const requestBody = {
-      includedTypes: types,
-      maxResultCount: maxResults,
-      locationRestriction: {
-        circle: {
-          center: {
-            latitude: location.lat,
-            longitude: location.lng
-          },
-          radius: radius
-        }
+    const options = {
+      method: 'GET',
+      url: url,
+      params: {
+        location: `${location.lat},${location.lng}`,
+        radius: radius,
+        type: type,
+        language: 'en'
       },
-      rankPreference: 'POPULARITY'
+      headers: {
+        'X-RapidAPI-Key': RAPIDAPI_KEY,
+        'X-RapidAPI-Host': RAPIDAPI_HOST
+      }
     };
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
-      'X-Goog-FieldMask': USE_FIELD_MASKING && !includeDetails 
-        ? ESSENTIAL_FIELDS.join(',') 
-        : DETAILED_FIELDS.join(',')
-    };
+    const response = await axios.request(options);
 
-    console.log(`🔍 Searching ${category} near (${location.lat}, ${location.lng})`);
+    if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
+      throw new Error(`RapidAPI error: ${response.data.status}`);
+    }
 
-    const response = await axios.post(url, requestBody, { headers });
-
-    const places = (response.data.places || []).map(place => ({
-      id: place.id,
-      placeId: place.id,
-      name: place.displayName?.text || 'Unnamed Place',
-      category: mapTypeToCategory(place.types),
+    const places = (response.data.results || []).slice(0, 20).map(place => ({
+      id: place.place_id,
+      name: place.name,
+      address: place.vicinity || place.formatted_address,
       location: {
-        lat: place.location?.latitude,
-        lng: place.location?.longitude
+        lat: place.geometry?.location?.lat,
+        lng: place.geometry?.location?.lng
       },
-      address: place.formattedAddress,
       rating: place.rating || 0,
-      userRatingsTotal: place.userRatingCount || 0,
-      priceLevel: place.priceLevel || 0,
-      photos: place.photos?.slice(0, 3).map(photo => ({
-        reference: photo.name,
-        width: photo.widthPx,
-        height: photo.heightPx
-      })) || [],
-      phone: place.internationalPhoneNumber,
-      types: place.types || [],
-      source: 'GOOGLE_SEARCH'
+      userRatings: place.user_ratings_total || 0,
+      photos: place.photos ? place.photos.slice(0, 3).map(p => p.photo_reference) : [],
+      isOpen: place.opening_hours?.open_now,
+      priceLevel: place.price_level ? '$'.repeat(place.price_level) : null,
+      types: place.types || []
     }));
 
-    console.log(`✅ Found ${places.length} places`);
-
-    return {
-      success: true,
-      data: places,
-      count: places.length
-    };
-
+    return places;
   } catch (error) {
-    console.error('Nearby search error:', error.response?.data || error.message);
-    throw new Error(`Failed to search nearby places: ${error.message}`);
+    console.error('Error searching nearby places:', error.message);
+    throw error;
   }
 };
 
@@ -129,216 +79,187 @@ export const searchNearbyPlaces = async (options) => {
  */
 export const getPlaceDetails = async (placeId) => {
   try {
-    if (!GOOGLE_MAPS_API_KEY) {
-      throw new Error('Google Maps API key not configured');
+    if (!RAPIDAPI_KEY) {
+      throw new Error('RapidAPI key not configured');
     }
 
-    const url = `https://places.googleapis.com/v1/${placeId}`;
-
-    const headers = {
-      'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
-      'X-Goog-FieldMask': DETAILED_FIELDS.join(',')
-    };
-
-    console.log(`📍 Fetching details for: ${placeId}`);
-
-    const response = await axios.get(url, { headers });
-    const place = response.data;
-
-    return {
-      success: true,
-      data: {
-        id: place.id,
-        placeId: place.id,
-        name: place.displayName?.text,
-        category: mapTypeToCategory(place.types),
-        location: {
-          lat: place.location?.latitude,
-          lng: place.location?.longitude
-        },
-        address: place.formattedAddress,
-        rating: place.rating,
-        userRatingsTotal: place.userRatingCount,
-        priceLevel: place.priceLevel,
-        photos: place.photos?.map(photo => ({
-          reference: photo.name,
-          width: photo.widthPx,
-          height: photo.heightPx
-        })) || [],
-        phone: place.internationalPhoneNumber,
-        website: place.websiteUri,
-        openingHours: place.regularOpeningHours?.weekdayDescriptions || [],
-        reviews: place.reviews?.slice(0, 5).map(review => ({
-          author: review.authorAttribution?.displayName,
-          rating: review.rating,
-          text: review.text?.text,
-          time: review.publishTime
-        })) || [],
-        editorialSummary: place.editorialSummary?.text,
-        types: place.types
+    const url = 'https://google-maps28.p.rapidapi.com/maps/api/place/details/json';
+    
+    const options = {
+      method: 'GET',
+      url: url,
+      params: {
+        place_id: placeId,
+        language: 'en'
+      },
+      headers: {
+        'X-RapidAPI-Key': RAPIDAPI_KEY,
+        'X-RapidAPI-Host': RAPIDAPI_HOST
       }
     };
 
+    const response = await axios.request(options);
+    
+    if (response.data.status !== 'OK') {
+      throw new Error(`RapidAPI error: ${response.data.status}`);
+    }
+
+    const place = response.data.result;
+
+    return {
+      id: place.place_id,
+      name: place.name,
+      address: place.formatted_address,
+      location: {
+        lat: place.geometry?.location?.lat,
+        lng: place.geometry?.location?.lng
+      },
+      rating: place.rating || 0,
+      userRatings: place.user_ratings_total || 0,
+      photos: place.photos ? place.photos.slice(0, 5).map(p => p.photo_reference) : [],
+      isOpen: place.opening_hours?.open_now,
+      priceLevel: place.price_level ? '$'.repeat(place.price_level) : null,
+      types: place.types || [],
+      website: place.website,
+      phoneNumber: place.formatted_phone_number,
+      openingHours: place.opening_hours?.weekday_text || [],
+      reviews: place.reviews?.slice(0, 5).map(review => ({
+        author: review.author_name,
+        rating: review.rating,
+        text: review.text,
+        time: review.time
+      })) || []
+    };
   } catch (error) {
-    console.error('Place details error:', error.response?.data || error.message);
-    throw new Error(`Failed to get place details: ${error.message}`);
+    console.error('Error fetching place details:', error.message);
+    throw error;
   }
 };
 
 /**
  * Get photo URL from photo reference
  */
-export const getPhotoUrl = (photoReference, options = {}) => {
-  if (!GOOGLE_MAPS_API_KEY || !photoReference) {
-    return null;
+export const getPhotoUrl = (photoReference, maxWidth = 800) => {
+  if (!RAPIDAPI_KEY) {
+    throw new Error('RapidAPI key not configured');
   }
 
-  const { maxWidth = 400, maxHeight = 400 } = options;
-
-  // Extract the photo name from the reference
-  const photoName = photoReference.includes('/')
-    ? photoReference
-    : `places/${photoReference}/photos/${photoReference}`;
-
-  return `https://places.googleapis.com/v1/${photoName}/media?key=${GOOGLE_MAPS_API_KEY}&maxWidthPx=${maxWidth}&maxHeightPx=${maxHeight}`;
+  // RapidAPI photo endpoint
+  return `https://google-maps28.p.rapidapi.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${RAPIDAPI_KEY}`;
 };
 
 /**
- * Search for accommodations near end-of-day location
+ * Find accommodations (hotels, hostels, etc.)
  */
-export const findAccommodations = async (options) => {
+export const findAccommodations = async (location, budget = 'moderate', radius = 5000) => {
   try {
-    const {
-      location,
-      budget = 'moderate', // 'economy', 'moderate', 'luxury'
-      maxResults = 10
-    } = options;
+    if (!RAPIDAPI_KEY) {
+      throw new Error('RapidAPI key not configured');
+    }
 
-    // Determine types based on budget
-    const types = budget === 'economy' 
-      ? ['hostel', 'guest_house', 'lodging']
-      : budget === 'luxury'
-      ? ['hotel', 'resort_hotel']
-      : ['hotel', 'lodging'];
-
-    const url = 'https://places.googleapis.com/v1/places:searchNearby';
+    const type = budget === 'economy' ? 'hostel' : budget === 'luxury' ? 'hotel' : 'lodging';
     
-    const requestBody = {
-      includedTypes: types,
-      maxResultCount: maxResults,
-      locationRestriction: {
-        circle: {
-          center: {
-            latitude: location.lat,
-            longitude: location.lng
-          },
-          radius: 3000 // 3km radius
-        }
+    const url = 'https://google-maps28.p.rapidapi.com/maps/api/place/nearbysearch/json';
+    
+    const options = {
+      method: 'GET',
+      url: url,
+      params: {
+        location: `${location.lat},${location.lng}`,
+        radius: radius,
+        type: type,
+        language: 'en'
       },
-      rankPreference: 'RATING'
+      headers: {
+        'X-RapidAPI-Key': RAPIDAPI_KEY,
+        'X-RapidAPI-Host': RAPIDAPI_HOST
+      }
     };
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
-      'X-Goog-FieldMask': ESSENTIAL_FIELDS.join(',')
-    };
+    const response = await axios.request(options);
 
-    console.log(`🏨 Finding ${budget} accommodations near (${location.lat}, ${location.lng})`);
+    if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
+      throw new Error(`RapidAPI error: ${response.data.status}`);
+    }
 
-    const response = await axios.post(url, requestBody, { headers });
-
-    const accommodations = (response.data.places || []).map(place => ({
-      id: place.id,
-      placeId: place.id,
-      name: place.displayName?.text,
-      category: 'Stay',
+    // Filter by budget
+    const places = (response.data.results || []).map(place => ({
+      id: place.place_id,
+      name: place.name,
+      address: place.vicinity || place.formatted_address,
       location: {
-        lat: place.location?.latitude,
-        lng: place.location?.longitude
+        lat: place.geometry?.location?.lat,
+        lng: place.geometry?.location?.lng
       },
-      address: place.formattedAddress,
       rating: place.rating || 0,
-      userRatingsTotal: place.userRatingCount || 0,
-      priceLevel: place.priceLevel || 0,
-      photos: place.photos?.slice(0, 1).map(photo => ({
-        reference: photo.name,
-        width: photo.widthPx,
-        height: photo.heightPx
-      })) || [],
-      phone: place.internationalPhoneNumber,
-      types: place.types || [],
-      source: 'GOOGLE_SEARCH'
+      userRatings: place.user_ratings_total || 0,
+      photos: place.photos ? place.photos.slice(0, 3).map(p => p.photo_reference) : [],
+      priceLevel: place.price_level || 0,
+      types: place.types || []
     }));
 
-    // Sort by rating
-    accommodations.sort((a, b) => b.rating - a.rating);
+    // Filter by price level based on budget
+    let filteredPlaces = places;
+    if (budget === 'economy') {
+      filteredPlaces = places.filter(p => p.priceLevel <= 2);
+    } else if (budget === 'moderate') {
+      filteredPlaces = places.filter(p => p.priceLevel >= 2 && p.priceLevel <= 3);
+    } else if (budget === 'luxury') {
+      filteredPlaces = places.filter(p => p.priceLevel >= 3);
+    }
 
-    console.log(`✅ Found ${accommodations.length} accommodations`);
-
-    return {
-      success: true,
-      data: accommodations,
-      count: accommodations.length
-    };
-
+    return filteredPlaces.slice(0, 10);
   } catch (error) {
-    console.error('Accommodation search error:', error.response?.data || error.message);
-    throw new Error(`Failed to find accommodations: ${error.message}`);
+    console.error('Error finding accommodations:', error.message);
+    throw error;
   }
 };
 
 /**
- * Map Google Place types to our category system
- */
-const mapTypeToCategory = (types = []) => {
-  if (types.some(t => ['restaurant', 'cafe', 'food', 'bakery', 'bar'].includes(t))) return 'Food';
-  if (types.some(t => ['lodging', 'hotel', 'hostel'].includes(t))) return 'Stay';
-  if (types.some(t => ['tourist_attraction', 'museum', 'park'].includes(t))) return 'Activity';
-  if (types.some(t => ['car_rental', 'bus_station', 'train_station', 'airport'].includes(t))) return 'Transport';
-  return 'Activity';
-};
-
-/**
- * Autocomplete suggestions for places (with session token for billing)
+ * Get autocomplete suggestions
  */
 export const getAutocompleteSuggestions = async (input, sessionToken = null) => {
   try {
-    if (!GOOGLE_MAPS_API_KEY) {
-      throw new Error('Google Maps API key not configured');
+    if (!RAPIDAPI_KEY) {
+      throw new Error('RapidAPI key not configured');
     }
 
-    const url = 'https://places.googleapis.com/v1/places:autocomplete';
+    const url = 'https://google-maps28.p.rapidapi.com/maps/api/place/autocomplete/json';
     
-    const requestBody = {
+    const params = {
       input: input,
-      sessionToken: sessionToken,
-      includedPrimaryTypes: ['locality', 'administrative_area_level_1', 'country']
+      language: 'en'
     };
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY
+    if (sessionToken) {
+      params.sessiontoken = sessionToken;
+    }
+
+    const options = {
+      method: 'GET',
+      url: url,
+      params: params,
+      headers: {
+        'X-RapidAPI-Key': RAPIDAPI_KEY,
+        'X-RapidAPI-Host': RAPIDAPI_HOST
+      }
     };
 
-    const response = await axios.post(url, requestBody, { headers });
+    const response = await axios.request(options);
 
-    const suggestions = (response.data.suggestions || []).map(suggestion => ({
-      placeId: suggestion.placePrediction?.placeId,
-      description: suggestion.placePrediction?.text?.text,
-      mainText: suggestion.placePrediction?.structuredFormat?.mainText?.text,
-      secondaryText: suggestion.placePrediction?.structuredFormat?.secondaryText?.text
+    if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
+      throw new Error(`RapidAPI error: ${response.data.status}`);
+    }
+
+    return (response.data.predictions || []).map(prediction => ({
+      description: prediction.description,
+      placeId: prediction.place_id,
+      mainText: prediction.structured_formatting?.main_text,
+      secondaryText: prediction.structured_formatting?.secondary_text
     }));
-
-    return {
-      success: true,
-      data: suggestions,
-      sessionToken: sessionToken
-    };
-
   } catch (error) {
-    console.error('Autocomplete error:', error.response?.data || error.message);
-    throw new Error(`Failed to get autocomplete suggestions: ${error.message}`);
+    console.error('Error getting autocomplete suggestions:', error.message);
+    throw error;
   }
 };
 
