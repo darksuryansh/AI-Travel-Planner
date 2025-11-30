@@ -40,6 +40,7 @@ router.get('/forecast', verifyAuth, async (req, res, next) => {
   }
 });
 
+
 /**
  * @route   GET /api/weather/aqi
  * @desc    Get Air Quality Index for a location
