@@ -692,5 +692,309 @@ socket.on('viewers-updated', (viewers) => {
 
 ---
 
+## 🗺️ Places API (Google Maps Integration)
+
+### Search Nearby Places
+```
+GET /api/places/nearby
+```
+
+**Purpose**: Find nearby places by category (stays, fun, sightseeing, shopping, transport, food)
+
+**Auth**: Required
+
+**Query Parameters:**
+- `lat` (required): Latitude
+- `lng` (required): Longitude
+- `category` (required): One of: stays, fun, sightseeing, shopping, transport, food
+- `radius` (optional): Search radius in meters (default: 2000)
+
+**Response:**
+```json
+{
+  "success": true,
+  "category": "fun",
+  "location": { "lat": 40.7128, "lng": -74.0060 },
+  "radius": 2000,
+  "count": 15,
+  "places": [
+    {
+      "id": "ChIJ...",
+      "name": "Central Park",
+      "address": "New York, NY 10024",
+      "location": { "lat": 40.7829, "lng": -73.9654 },
+      "rating": 4.8,
+      "userRatings": 125000,
+      "photos": ["photo_reference_1", "photo_reference_2"],
+      "isOpen": true,
+      "priceLevel": "$",
+      "types": ["park", "tourist_attraction"]
+    }
+  ]
+}
+```
+
+### Get Place Details
+```
+GET /api/places/:placeId
+```
+
+**Purpose**: Get comprehensive details about a specific place
+
+**Auth**: Required
+
+**Response:**
+```json
+{
+  "success": true,
+  "place": {
+    "id": "ChIJ...",
+    "name": "Central Park",
+    "address": "New York, NY 10024",
+    "location": { "lat": 40.7829, "lng": -73.9654 },
+    "rating": 4.8,
+    "userRatings": 125000,
+    "photos": ["photo_reference_1"],
+    "isOpen": true,
+    "priceLevel": "$",
+    "types": ["park"],
+    "website": "https://centralparknyc.org",
+    "phoneNumber": "+1-212-310-6600",
+    "openingHours": {
+      "monday": "6:00 AM - 1:00 AM",
+      "tuesday": "6:00 AM - 1:00 AM"
+    },
+    "reviews": [
+      {
+        "author": "John D.",
+        "rating": 5,
+        "text": "Amazing park!",
+        "time": 1699999999
+      }
+    ]
+  }
+}
+```
+
+### Get Photo URL
+```
+GET /api/places/photo/:photoReference
+```
+
+**Purpose**: Convert Google Places photo reference to accessible URL
+
+**Auth**: Required
+
+**Query Parameters:**
+- `maxWidth` (optional): Maximum photo width (default: 800)
+
+**Response:**
+```json
+{
+  "success": true,
+  "photoUrl": "https://maps.googleapis.com/maps/api/place/photo?..."
+}
+```
+
+### Find Accommodations
+```
+GET /api/places/accommodations/search
+```
+
+**Purpose**: Search for hotels, hostels, and Airbnb options
+
+**Auth**: Required
+
+**Query Parameters:**
+- `lat` (required): Latitude
+- `lng` (required): Longitude
+- `budget` (optional): economy, moderate, luxury (default: moderate)
+- `radius` (optional): Search radius in meters (default: 5000)
+
+**Response:**
+```json
+{
+  "success": true,
+  "budget": "moderate",
+  "location": { "lat": 40.7128, "lng": -74.0060 },
+  "radius": 5000,
+  "count": 25,
+  "accommodations": [
+    {
+      "id": "ChIJ...",
+      "name": "Hotel Example",
+      "address": "123 Main St",
+      "location": { "lat": 40.7128, "lng": -74.0060 },
+      "rating": 4.5,
+      "userRatings": 890,
+      "photos": ["photo_ref"],
+      "priceLevel": "$$",
+      "types": ["hotel", "lodging"]
+    }
+  ]
+}
+```
+
+### Autocomplete Suggestions
+```
+GET /api/places/autocomplete
+```
+
+**Purpose**: Get place autocomplete suggestions (billing optimized with session tokens)
+
+**Auth**: Required
+
+**Query Parameters:**
+- `input` (required): Search query
+- `sessionToken` (optional): Session token for billing optimization
+
+**Response:**
+```json
+{
+  "success": true,
+  "input": "new york",
+  "count": 5,
+  "suggestions": [
+    {
+      "description": "New York, NY, USA",
+      "placeId": "ChIJ...",
+      "mainText": "New York",
+      "secondaryText": "NY, USA"
+    }
+  ]
+}
+```
+
+---
+
+## 🌤️ Weather API
+
+### Get Weather Forecast
+```
+GET /api/weather/forecast
+```
+
+**Purpose**: Get 7-day weather forecast with optimal day recommendation
+
+**Auth**: Required
+
+**Query Parameters:**
+- `lat` (required): Latitude
+- `lng` (required): Longitude
+- `location` (optional): Location name for display
+
+**Response:**
+```json
+{
+  "success": true,
+  "location": "Paris, France",
+  "forecast": [
+    {
+      "date": "2024-01-15",
+      "dayOfWeek": "Monday",
+      "temperature": {
+        "min": 8,
+        "max": 15,
+        "feels_like": 12
+      },
+      "weather": {
+        "main": "Clear",
+        "description": "clear sky",
+        "icon": "01d"
+      },
+      "precipitation": {
+        "probability": 10,
+        "rain": 0
+      },
+      "wind": {
+        "speed": 3.5,
+        "direction": 180
+      },
+      "humidity": 65,
+      "uvIndex": 2,
+      "visibility": 10000
+    }
+  ],
+  "optimalDay": {
+    "date": "2024-01-15",
+    "dayOfWeek": "Monday",
+    "score": 95,
+    "reason": "Perfect conditions with clear skies and comfortable temperatures (15°C). Low wind speeds and minimal UV exposure make it ideal for outdoor activities."
+  }
+}
+```
+
+### Get Air Quality Index
+```
+GET /api/weather/aqi
+```
+
+**Purpose**: Get current Air Quality Index and pollutant levels
+
+**Auth**: Required
+
+**Query Parameters:**
+- `lat` (required): Latitude
+- `lng` (required): Longitude
+- `location` (optional): Location name
+
+**Response:**
+```json
+{
+  "success": true,
+  "location": "Paris, France",
+  "aqi": 45,
+  "level": {
+    "value": 2,
+    "label": "Fair",
+    "color": "#80C342",
+    "description": "Air quality is acceptable. Sensitive individuals should consider reducing prolonged outdoor activities."
+  },
+  "healthAdvice": "Generally acceptable air quality. Unusually sensitive people should consider limiting prolonged outdoor exertion.",
+  "components": {
+    "pm2_5": 12.5,
+    "pm10": 20.3,
+    "o3": 35.2,
+    "no2": 18.7,
+    "co": 0.3,
+    "so2": 5.1
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+### Get Optimal Day
+```
+GET /api/weather/optimal-day
+```
+
+**Purpose**: Calculate the best day to visit based on weather conditions
+
+**Auth**: Required
+
+**Query Parameters:**
+- `lat` (required): Latitude
+- `lng` (required): Longitude
+- `location` (optional): Location name
+
+**Response:**
+```json
+{
+  "success": true,
+  "location": "Paris, France",
+  "optimalDay": {
+    "date": "2024-01-17",
+    "dayOfWeek": "Wednesday",
+    "score": 98,
+    "reason": "Exceptional conditions with clear skies and ideal temperatures (18°C). Calm winds and excellent visibility make it perfect for sightseeing and outdoor activities."
+  },
+  "forecast": [
+    // Next 3 days for comparison
+  ]
+}
+```
+
+---
+
 **Last Updated**: November 20, 2025  
-**API Version**: 1.0.0
+**API Version**: 2.0.0

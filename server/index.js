@@ -16,6 +16,8 @@ import { initializeProducer } from './services/kafkaProducer.js';
 import aiRoutes from './routes/ai.routes.js';
 import itineraryRoutes from './routes/itinerary.routes.js';
 import priceWatchRoutes from './routes/priceWatch.routes.js';
+import placesRoutes from './routes/places.routes.js';
+import weatherRoutes from './routes/weather.routes.js';
 
 // Middleware imports
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -86,6 +88,8 @@ app.get('/', (req, res) => {
       health: '/api/health',
       ai: '/api/*',
       itineraries: '/api/itineraries',
+      places: '/api/places',
+      weather: '/api/weather',
       priceWatch: '/api/price-watch'
     }
   });
@@ -94,6 +98,8 @@ app.get('/', (req, res) => {
 app.use('/api', aiRoutes);
 app.use('/api/itineraries', itineraryRoutes);
 app.use('/api/price-watch', priceWatchRoutes);
+app.use('/api/places', placesRoutes);
+app.use('/api/weather', weatherRoutes);
 
 // ==================== SOCKET.IO REAL-TIME COLLABORATION ====================
 
