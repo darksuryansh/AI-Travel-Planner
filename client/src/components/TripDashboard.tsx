@@ -1,14 +1,60 @@
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, MapPin, Calendar, Trash2, Eye, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { mockTrips } from '../services/mockApi';
+import { apiService } from '../services/api';
+import { toast } from 'sonner';
 
 export default function TripDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [trips] = useState(mockTrips);
+  const [trips, setTrips] = useState(mockTrips);
+  const [loading, setLoading] = useState(false);
+
+  // Try to fetch real trips from backend (will use mock data if user not authenticated)
+  useEffect(() => {
+    const fetchTrips = async () => {
+      setLoading(true);
+      try {
+        const response = await apiService.getItineraries(20, 0);
+        if (response.success && response.data.length > 0) {
+          // Map backend data to match mockTrips format
+          const mappedTrips = response.data.map((itinerary: any) => ({
+            id: itinerary.id,
+            title: itinerary.title,
+            destination: itinerary.destination,
+            duration: `${itinerary.duration} days`,
+            dates: itinerary.createdAt ? new Date(itinerary.createdAt).toLocaleDateString() : 'N/A',
+            status: 'Saved',
+            gradient: 'from-blue-500 to-indigo-600',
+            image: itinerary.days?.[0]?.activities?.[0]?.image || undefined,
+          }));
+          setTrips(mappedTrips);
+        }
+      } catch (error) {
+        console.log('Using mock trips (user not authenticated or error occurred)');
+        // Keep using mock data
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTrips();
+  }, []);
+
+  const handleDelete = async (tripId: string) => {
+    if (!confirm('Are you sure you want to delete this trip?')) return;
+    
+    try {
+      await apiService.deleteItinerary(tripId);
+      setTrips(trips.filter(trip => trip.id !== tripId));
+      toast.success('Trip deleted successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete trip');
+    }
+  };
 
   const filteredTrips = trips.filter(trip =>
     trip.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -165,7 +211,12 @@ export default function TripDashboard() {
                   <Button variant="ghost" size="sm">
                     <Download className="size-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="hover:bg-red-50 dark:hover:bg-red-900/20">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="hover:bg-red-50 dark:hover:bg-red-900/20"
+                    onClick={() => handleDelete(trip.id)}
+                  >
                     <Trash2 className="size-4 hover:text-red-600" />
                   </Button>
                 </div>

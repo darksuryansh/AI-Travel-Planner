@@ -146,7 +146,7 @@ Located at `c:\pc\Travel_Planner\server\.env`
 ```env
 PORT=5000
 NODE_ENV=development
-GEMINI_API_KEY=AIzaSyBa3-QfbJ2K-dEVTiQG3pQgZKtBrQCFEIo
+GEMINI_API_KEY=geminiapikey
 REDIS_URL=redis://localhost:6379
 SOCKET_CORS_ORIGIN=http://localhost:5173
 ```

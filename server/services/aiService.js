@@ -208,7 +208,7 @@ Respond with ONLY the paragraph, no JSON, no formatting.`
  */
 export const parseIntent = async (userInput) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     
     const prompt = `${PROMPTS.INTENT_PARSER}\n\nUser Input: "${userInput}"`;
     
@@ -249,10 +249,11 @@ export const generateItinerary = async (params) => {
       startDate = null
     } = params;
 
-    // Use Gemini with Google Search Grounding
+    // Use Gemini 1.5 Flash (faster and more reliable)
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-pro',
-      tools: [{ googleSearchRetrieval: {} }] // Enable Google Search Grounding
+      model: 'gemini-2.0-flash',
+      // Note: Google Search Grounding requires gemini-pro with specific access
+      // Using standard generation for broader compatibility
     });
     
     const userParams = JSON.stringify({
@@ -298,7 +299,7 @@ export const generateItinerary = async (params) => {
  */
 export const generateVibeEmbedding = async (itinerary) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     
     const itineraryContext = JSON.stringify({
       title: itinerary.title,
@@ -338,7 +339,7 @@ export const generateVibeEmbedding = async (itinerary) => {
  */
 export const enhanceItinerary = async (itineraryId, userFeedback) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     const prompt = `You are enhancing a travel itinerary based on user feedback.
     

@@ -52,31 +52,58 @@ export default function HeroSection({ onGenerate }: HeroSectionProps) {
       return;
     }
 
-    toast.loading('Parsing your intent...');
+    const loadingToast = toast.loading('🤖 AI parsing your intent...');
     
-    // Simulate AI parsing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const parsed = {
-      destination: 'Tokyo, Japan',
-      duration: '5',
-      budget: '3000',
-      interests: ['sushi', 'history', 'art'],
-    };
+    try {
+      // Call real backend API
+      const { apiService } = await import('../services/api');
+      const response = await apiService.parseIntent(input);
+      
+      const parsed = {
+        destination: response.data.destination,
+        duration: response.data.duration.toString(),
+        budget: response.data.budget,
+        interests: response.data.interests,
+      };
 
-    setFormData(parsed);
-    setSelectedInterests(parsed.interests);
-    setShowStructuredForm(true);
-    toast.dismiss();
-    toast.success('✨ Intent parsed successfully!');
+      setFormData(parsed);
+      setSelectedInterests(parsed.interests);
+      setShowStructuredForm(true);
+      toast.dismiss(loadingToast);
+      
+      if (response.cached) {
+        toast.success('✨ Intent parsed (cached)!');
+      } else {
+        toast.success('✨ Intent parsed successfully!');
+      }
+    } catch (error: any) {
+      toast.dismiss(loadingToast);
+      toast.error(error.message || 'Failed to parse intent');
+      console.error('Intent parsing error:', error);
+    }
   };
 
   const handleGenerate = () => {
+    // Validate required fields
+    if (!input.trim() && !formData.destination) {
+      toast.error('Please enter your travel plans or fill in the destination');
+      return;
+    }
+    
+    // Ensure we have at least destination and duration
+    const destination = formData.destination || 'Paris, France';
+    const duration = formData.duration || '7';
+    const budget = formData.budget || 'moderate';
+    
     const finalData = {
-      ...formData,
-      interests: selectedInterests,
+      destination,
+      duration,
+      budget,
+      interests: selectedInterests.length > 0 ? selectedInterests : ['sightseeing'],
       rawInput: input,
     };
+    
+    console.log('📤 Sending to parent:', finalData);
     onGenerate(finalData);
   };
 
