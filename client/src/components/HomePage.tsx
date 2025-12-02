@@ -43,6 +43,19 @@ export default function HomePage() {
       console.log('🚀 Generating itinerary with params:', params);
       const response = await apiService.generateItinerary(params);
       
+      console.log('✅ Received itinerary response:', response);
+      console.log('📊 Itinerary data structure:', {
+        hasData: !!response.data,
+        hasDays: !!response.data?.days,
+        daysCount: response.data?.days?.length,
+        firstDay: response.data?.days?.[0]
+      });
+      
+      // Validate itinerary data structure
+      if (!response.data || !response.data.days || !Array.isArray(response.data.days)) {
+        throw new Error('Invalid itinerary structure received from server');
+      }
+      
       if (response.cached) {
         toast.success('✨ Retrieved itinerary from cache!');
       } else {

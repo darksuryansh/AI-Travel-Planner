@@ -25,6 +25,30 @@ export default function CommandCenter({ itinerary, onReset }: CommandCenterProps
   const [itineraryData, setItineraryData] = useState(itinerary);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Debug logging
+  console.log('🎨 CommandCenter received itinerary:', {
+    title: itineraryData?.title,
+    destination: itineraryData?.destination,
+    daysCount: itineraryData?.days?.length,
+    hasEstimatedCost: !!itineraryData?.estimatedCost,
+  });
+
+  // Add safety check
+  if (!itineraryData || !itineraryData.days || itineraryData.days.length === 0) {
+    console.error('❌ Invalid itinerary data:', itineraryData);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black text-white p-4">
+        <div className="text-center">
+          <h2 className="text-2xl mb-4">Unable to display itinerary</h2>
+          <p className="text-gray-400 mb-6">The itinerary data is invalid or incomplete.</p>
+          <Button onClick={onReset} className="bg-yellow-500 hover:bg-yellow-600 text-black">
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const handleSave = () => {
     toast.success('Itinerary saved to your trips!');
   };
@@ -185,7 +209,13 @@ export default function CommandCenter({ itinerary, onReset }: CommandCenterProps
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-card/50 backdrop-blur border border-border rounded-lg">
                 <DollarSign className="size-4 text-yellow-400" />
-                <span className="text-sm text-foreground">${itineraryData.estimatedCost}</span>
+                <span className="text-sm text-foreground">
+                  {typeof itineraryData.estimatedCost === 'number' 
+                    ? `$${itineraryData.estimatedCost}`
+                    : itineraryData.estimatedCost?.min && itineraryData.estimatedCost?.max
+                    ? `$${itineraryData.estimatedCost.min}-${itineraryData.estimatedCost.max}`
+                    : 'N/A'}
+                </span>
               </div>
             </div>
           </div>

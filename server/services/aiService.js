@@ -38,21 +38,25 @@ Output: {"destination":"Thailand","duration":14,"budget":"economy","interests":[
 
 Now parse the following travel request:`,
 
-  ITINERARY_GENERATOR: `You are an elite travel concierge AI specializing in creating detailed, realistic, and personalized travel itineraries with comprehensive travel intelligence.
+  ITINERARY_GENERATOR: `You are an elite travel concierge AI specializing in creating detailed, realistic, and personalized travel itineraries.
 
-CRITICAL RULES:
-1. ALWAYS respond with ONLY valid JSON - no markdown, no code blocks, no explanation text
-2. Use Google Search Grounding for real, current information about places
-3. Create realistic daily schedules (8 AM - 10 PM typical)
-4. Include specific venue names, addresses when possible
-5. Balance activities with rest time
-6. Consider travel time between locations
-7. Match activities to user's interests and budget
-8. Include popular photo spots for Instagram/social media
-9. Suggest best accommodation options for each day's end location
-10. Add brief historical context and fascinating facts
+CRITICAL JSON RULES - FOLLOW EXACTLY:
+1. Response must be PURE JSON ONLY - no markdown, no code blocks, no text before or after
+2. NO triple backticks (\`\`\`) anywhere in response
+3. All strings must use double quotes, properly escaped
+4. NO trailing commas before closing brackets
+5. All JSON must be valid and parseable
+6. String values cannot contain unescaped newlines - use \\n instead
+7. String values cannot contain unescaped quotes - use \\" instead
 
-OUTPUT SCHEMA (JSON only):
+CONTENT RULES:
+- Create realistic daily schedules (8 AM - 10 PM typical)
+- Include specific venue names and locations when possible
+- Balance activities with rest time
+- Match activities to user's interests and budget
+- Keep descriptions concise (1-2 sentences max per field)
+
+OUTPUT SCHEMA (respond with valid JSON matching this structure):
 {
   "title": "string (engaging trip title)",
   "destination": "string",
@@ -117,76 +121,26 @@ OUTPUT SCHEMA (JSON only):
   "days": [
     {
       "day": "number",
-      "date": "string (if startDate provided, else Day 1, Day 2...)",
-      "theme": "string (day's focus)",
-      "startLocation": {"lat": number, "lng": number, "name": "string"},
-      "endLocation": {"lat": number, "lng": number, "name": "string"},
+      "theme": "string (day's focus like 'Arrival & Exploration')",
       "activities": [
         {
           "time": "string (HH:MM AM/PM)",
           "title": "string",
-          "description": "string (detailed, 2-3 sentences)",
+          "description": "string (1-2 sentences)",
           "location": "string (specific venue/address)",
-          "coordinates": {"lat": number, "lng": number},
-          "duration": "string (e.g., 2 hours)",
-          "cost": "string (e.g., $20-30 or Free)",
-          "tips": "string (insider advice)",
-          "category": "string (food/culture/adventure/relaxation/transport)",
-          "photoWorthy": "boolean (is this a must-photograph spot?)"
+          "category": "string (food/culture/adventure/relaxation/shopping/sightseeing)",
+          "estimatedCost": "number (in USD)"
         }
-      ],
-      "meals": {
-        "breakfast": {
-          "name": "string",
-          "location": "string",
-          "cuisine": "string",
-          "priceRange": "string"
-        },
-        "lunch": {
-          "name": "string",
-          "location": "string",
-          "cuisine": "string",
-          "priceRange": "string"
-        },
-        "dinner": {
-          "name": "string",
-          "location": "string",
-          "cuisine": "string",
-          "priceRange": "string"
-        }
-      },
-      "accommodation": {
-        "suggestion": "string (hotel/hostel name or area)",
-        "type": "string (hotel/hostel/airbnb)",
-        "priceRange": "string",
-        "nearEndLocation": "boolean"
-      }
+      ]
     }
   ],
-  "packingList": ["array", "of", "essential", "items"],
-  "localTips": ["array", "of", "helpful", "local", "advice"],
-  "emergencyInfo": {
-    "embassy": "string",
-    "emergencyNumber": "string",
-    "hospitals": ["array"]
-  }
+  "packingList": ["item1", "item2", "item3"]
 }
 
-QUALITY STANDARDS:
-- Each day should have 4-6 activities minimum
-- Include breakfast, lunch, dinner recommendations with specific names
-- Provide specific venue names (restaurants, museums, beaches)
-- Add realistic GPS coordinates for major activities
-- Add practical tips (best time to visit, how to get there)
-- Consider user's travel style (relaxed = fewer activities, packed = more)
-- Budget awareness (economy = free/cheap, luxury = premium experiences)
-- Include 2-3 Instagram-worthy photo spots per day
-- Suggest accommodation near the end location of each day
-- Add 5-7 frequently asked questions about the destination
-- Include brief historical context (2-3 sentences)
-- Provide transportation options (flight, train, bus, road)
+IMPORTANT: Generate 4-7 activities per day including meals (breakfast/lunch/dinner as food category).
+Match content to user interests and budget level.
 
-Now generate an itinerary based on these parameters:`,
+Now generate the itinerary for:`,
 
   VIBE_SEARCH_EMBEDDER: `You are creating a semantic summary of a travel itinerary for vector search.
 
@@ -249,11 +203,15 @@ export const generateItinerary = async (params) => {
       startDate = null
     } = params;
 
-    // Use Gemini 1.5 Flash (faster and more reliable)
+    // Use Gemini 2.0 Flash with JSON response configuration
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.0-flash',
-      // Note: Google Search Grounding requires gemini-pro with specific access
-      // Using standard generation for broader compatibility
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: 8192,
+      },
     });
     
     const userParams = JSON.stringify({
@@ -270,15 +228,48 @@ export const generateItinerary = async (params) => {
     
     const result = await model.generateContent(prompt);
     const response = result.response;
-    const text = response.text();
+    let text = response.text();
     
-    // Clean response
-    const cleanedText = text
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
+    console.log('🤖 Raw AI response length:', text.length);
+    
+    // Clean response - remove markdown code blocks and extra whitespace
+    let cleanedText = text
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
       .trim();
     
-    const itinerary = JSON.parse(cleanedText);
+    // Fix common JSON issues
+    // 1. Remove any trailing commas before closing brackets
+    cleanedText = cleanedText.replace(/,(\s*[}\]])/g, '$1');
+    
+    // 2. Escape unescaped quotes in strings (basic fix)
+    // Note: This is a simple heuristic and may need refinement
+    
+    // 3. Try to find valid JSON if response has extra text
+    const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanedText = jsonMatch[0];
+    }
+    
+    console.log('✨ Cleaned response length:', cleanedText.length);
+    
+    let itinerary;
+    try {
+      itinerary = JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error('❌ JSON Parse Error:', parseError.message);
+      console.error('📝 First 500 chars:', cleanedText.substring(0, 500));
+      console.error('📝 Last 500 chars:', cleanedText.substring(cleanedText.length - 500));
+      
+      // Try to fix the JSON by finding the error position
+      const errorMatch = parseError.message.match(/position (\d+)/);
+      if (errorMatch) {
+        const errorPos = parseInt(errorMatch[1]);
+        console.error('🔍 Error near:', cleanedText.substring(Math.max(0, errorPos - 100), Math.min(cleanedText.length, errorPos + 100)));
+      }
+      
+      throw new Error(`AI returned invalid JSON: ${parseError.message}`);
+    }
     
     // Add metadata
     itinerary.generatedAt = new Date().toISOString();
