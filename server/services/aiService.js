@@ -6,9 +6,7 @@ dotenv.config();
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * System Prompts for different AI tasks
- */
+
 export const PROMPTS = {
   INTENT_PARSER: `You are an expert travel intent parser. Your task is to extract structured information from natural language travel requests.
 
@@ -157,40 +155,47 @@ Be evocative and descriptive. Focus on feelings and experiences.
 Respond with ONLY the paragraph, no JSON, no formatting.`
 };
 
-/**
- * Parse natural language travel intent into structured JSON
- */
-export const parseIntent = async (userInput) => {
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    
-    const prompt = `${PROMPTS.INTENT_PARSER}\n\nUser Input: "${userInput}"`;
-    
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-    
-    // Clean response - remove markdown code blocks if present
-    const cleanedText = text
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-    
-    const parsedIntent = JSON.parse(cleanedText);
-    
-    return {
-      success: true,
-      data: parsedIntent
-    };
-  } catch (error) {
-    console.error('Intent parsing error:', error);
-    throw new Error(`Failed to parse intent: ${error.message}`);
-  }
-};
 
-/**
- * Generate detailed travel itinerary with Google Search Grounding
- */
+
+
+
+// /**
+//  * Parse natural language travel intent into structured JSON
+//  */
+// export const parseIntent = async (userInput) => {
+//   try {
+//     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    
+//     const prompt = `${PROMPTS.INTENT_PARSER}\n\nUser Input: "${userInput}"`;
+    
+//     const result = await model.generateContent(prompt);
+//     const response = result.response;
+//     const text = response.text();
+    
+//     // Clean response - remove markdown code blocks if present
+//     const cleanedText = text
+//       .replace(/```json\n?/g, '')
+//       .replace(/```\n?/g, '')
+//       .trim();
+    
+//     const parsedIntent = JSON.parse(cleanedText);
+    
+//     return {
+//       success: true,
+//       data: parsedIntent
+//     };
+//   } catch (error) {
+//     console.error('Intent parsing error:', error);
+//     throw new Error(`Failed to parse intent: ${error.message}`);
+//   }
+// };
+
+
+
+
+
+//  Generate detailed travel itinerary with Google Search Grounding
+
 export const generateItinerary = async (params) => {
   try {
     const {
@@ -205,7 +210,7 @@ export const generateItinerary = async (params) => {
 
     // Use Gemini 2.0 Flash with JSON response configuration
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3-flash',
       generationConfig: {
         temperature: 0.7,
         topP: 0.8,
@@ -251,13 +256,13 @@ export const generateItinerary = async (params) => {
       cleanedText = jsonMatch[0];
     }
     
-    console.log('✨ Cleaned response length:', cleanedText.length);
+    console.log(' Cleaned response length:', cleanedText.length);
     
     let itinerary;
     try {
       itinerary = JSON.parse(cleanedText);
     } catch (parseError) {
-      console.error('❌ JSON Parse Error:', parseError.message);
+      console.error(' JSON Parse Error:', parseError.message);
       console.error('📝 First 500 chars:', cleanedText.substring(0, 500));
       console.error('📝 Last 500 chars:', cleanedText.substring(cleanedText.length - 500));
       
@@ -285,12 +290,14 @@ export const generateItinerary = async (params) => {
   }
 };
 
+
+
 /**
  * Generate embeddings description for vibe search (stub for vector DB)
  */
 export const generateVibeEmbedding = async (itinerary) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const itineraryContext = JSON.stringify({
       title: itinerary.title,
@@ -330,7 +337,7 @@ export const generateVibeEmbedding = async (itinerary) => {
  */
 export const enhanceItinerary = async (itineraryId, userFeedback) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const prompt = `You are enhancing a travel itinerary based on user feedback.
     
