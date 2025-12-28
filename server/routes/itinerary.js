@@ -17,10 +17,12 @@ router.get(
     const { uid } = req.user;
     const { limit = 20, offset = 0 } = req.query;
     
+    // Temporarily removed orderBy to avoid index requirement
+    // Add back later after creating composite index in Firebase Console
     const snapshot = await db
       .collection(collections.ITINERARIES)
       .where('userId', '==', uid)
-      .orderBy('createdAt', 'desc')
+      .orderBy('createdAt', 'desc')  
       .limit(parseInt(limit))
       .offset(parseInt(offset))
       .get();

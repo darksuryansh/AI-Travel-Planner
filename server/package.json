@@ -1,13 +1,12 @@
 {
   "name": "travel-planner-backend",
   "version": "1.0.0",
-  "description": "AI-Powered Travel Itinerary Planner Backend with Advanced Architecture",
-  "main": "index.js",
+  "description": "AI-Powered Travel Itinerary Planner Backend",
+  "main": "app.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "worker:price-watch": "node workers/priceWatchWorker.js",
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -23,16 +22,11 @@
     "axios": "^1.6.5",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "firebase-admin": "^12.0.0",
     "helmet": "^7.1.0",
-    "kafkajs": "^2.2.4",
-    "redis": "^4.6.12",
-    "socket.io": "^4.6.1",
-    "socket.io-client": "^4.8.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

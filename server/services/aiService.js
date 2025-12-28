@@ -208,14 +208,15 @@ export const generateItinerary = async (params) => {
       startDate = null
     } = params;
 
-    // Use Gemini 2.0 Flash with JSON response configuration
+   
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-3-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.7,
-        topP: 0.8,
+        topP: 0.95,
         topK: 40,
         maxOutputTokens: 8192,
+        responseMimeType: "application/json", 
       },
     });
     
@@ -243,26 +244,28 @@ export const generateItinerary = async (params) => {
       .replace(/```\s*/g, '')
       .trim();
     
-    // Fix common JSON issues
+    // Aggressive JSON cleaning
     // 1. Remove any trailing commas before closing brackets
     cleanedText = cleanedText.replace(/,(\s*[}\]])/g, '$1');
     
-    // 2. Escape unescaped quotes in strings (basic fix)
-    // Note: This is a simple heuristic and may need refinement
+    // 2. Fix common escape issues in strings
+    cleanedText = cleanedText.replace(/\\n/g, ' ');
+    cleanedText = cleanedText.replace(/\n/g, ' ');
     
-    // 3. Try to find valid JSON if response has extra text
+    // 3. Try to extract valid JSON if response has extra text
     const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       cleanedText = jsonMatch[0];
     }
     
-    console.log(' Cleaned response length:', cleanedText.length);
+    console.log('✅ Cleaned response length:', cleanedText.length);
     
     let itinerary;
     try {
       itinerary = JSON.parse(cleanedText);
+      console.log('✅ JSON parsed successfully!');
     } catch (parseError) {
-      console.error(' JSON Parse Error:', parseError.message);
+      console.error('❌ JSON Parse Error:', parseError.message);
       console.error('📝 First 500 chars:', cleanedText.substring(0, 500));
       console.error('📝 Last 500 chars:', cleanedText.substring(cleanedText.length - 500));
       
@@ -272,6 +275,12 @@ export const generateItinerary = async (params) => {
         const errorPos = parseInt(errorMatch[1]);
         console.error('🔍 Error near:', cleanedText.substring(Math.max(0, errorPos - 100), Math.min(cleanedText.length, errorPos + 100)));
       }
+      
+      // Save the bad JSON to a file for debugging
+      console.error('💾 Saving failed JSON to debug-failed-json.txt');
+      await import('fs').then(fs => {
+        fs.promises.writeFile('debug-failed-json.txt', cleanedText, 'utf8');
+      });
       
       throw new Error(`AI returned invalid JSON: ${parseError.message}`);
     }
@@ -375,7 +384,7 @@ Respond with ONLY valid JSON in this format:
 };
 
 export default {
-  parseIntent,
+  // parseIntent,
   generateItinerary,
   generateVibeEmbedding,
   enhanceItinerary,
