@@ -9,12 +9,13 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import dotenv from 'dotenv';
 
-
-dotenv.config();
-
-
+/**
+ * Firebase Project Configuration
+ * 
+ * These values come from .env file (Vite automatically loads it)
+ * IMPORTANT: In Vite, use import.meta.env NOT process.env
+ */
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,              // Public API key 
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,      // Where auth redirects go

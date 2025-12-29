@@ -1,6 +1,21 @@
 import { motion } from 'motion/react';
-import { Clock, MapPin, DollarSign, Tag, ChevronRight, Star } from 'lucide-react';
+import { Clock, MapPin, Tag, ChevronRight, Star } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+
+// Helper function to get currency symbol based on destination
+const getCurrencySymbol = (destination?: string): string => {
+  if (!destination) return '$';
+  const dest = destination.toLowerCase();
+  
+  if (dest.includes('india')) return '₹';
+  if (dest.includes('china')) return '¥';
+  if (dest.includes('japan')) return '¥';
+  if (dest.includes('uk') || dest.includes('england') || dest.includes('london')) return '£';
+  if (dest.includes('euro') || dest.includes('france') || dest.includes('germany') || 
+      dest.includes('italy') || dest.includes('spain') || dest.includes('paris')) return '€';
+  
+  return '$'; // Default to USD
+};
 
 interface ActivityCardProps {
   activity: {
@@ -13,6 +28,7 @@ interface ActivityCardProps {
     rating?: number;
     image?: string;
   };
+  destination?: string;
 }
 
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -24,7 +40,7 @@ const categoryColors: Record<string, { bg: string; text: string; border: string 
   relaxation: { bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-800' },
 };
 
-export default function ActivityCard({ activity }: ActivityCardProps) {
+export default function ActivityCard({ activity, destination }: ActivityCardProps) {
   const categoryStyle = categoryColors[activity.category.toLowerCase()] || categoryColors.sightseeing;
 
   return (
@@ -84,8 +100,7 @@ export default function ActivityCard({ activity }: ActivityCardProps) {
             <span className="line-clamp-1">{activity.location}</span>
           </div>
           <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-            <DollarSign className="size-3" />
-            <span>${activity.estimatedCost}</span>
+            <span>{getCurrencySymbol(destination)}{activity.estimatedCost}</span>
           </div>
         </div>
 
