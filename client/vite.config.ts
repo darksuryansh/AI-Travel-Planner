@@ -51,7 +51,8 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      // outDir: 'build',
+      outDir: 'dist',
     },
  server: {
     host: '0.0.0.0',
