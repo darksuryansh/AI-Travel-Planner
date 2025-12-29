@@ -19,7 +19,8 @@ const PORT = process.env.PORT || 5000;
 
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',  
+  origin: process.env.CORS_ORIGIN || '*',  
+    // origin: process.env.CORS_ORIGIN || 'http://localhost:5173',  
   credentials: true  
 }));
 
@@ -30,18 +31,23 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));  // Parse URL-en
 
 
 
-// app.get('/', (req, res) => {
-//   res.json({
-//     message: '🌍 Travel Planner API',
-//     version: '1.0.0',
-//     status: 'running',
-//     endpoints: {
-//       health: '/api/health',
-//       itineraries: '/api/itineraries',
-//       ai: '/api/generate-itinerary'
-//     }
-//   });
-// });
+app.get('/', (req, res) => {
+  res.json({
+    message: ' Travel Planner API',
+   
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      itineraries: '/api/itineraries',
+      ai: '/api/generate-itinerary',
+      weather: '/api/weather'
+    }
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
 
 
 
