@@ -215,7 +215,7 @@ export const generateItinerary = async (params) => {
         temperature: 0.7,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 65536, // Supports itineraries up to 30 days with full details
         responseMimeType: "application/json", 
       },
     });

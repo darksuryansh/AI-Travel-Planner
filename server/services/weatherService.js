@@ -19,7 +19,7 @@ export const getWeatherForecast = async (location) => {
     
     console.log(`🌤️  Fetching weather for (${lat}, ${lng})`);
     
-    // Current weather API (Free tier)
+    // Current weather API 
     const currentUrl = `https://api.openweathermap.org/data/2.5/weather`;
     const currentParams = {
       lat: lat,
@@ -31,7 +31,7 @@ export const getWeatherForecast = async (location) => {
     const currentResponse = await axios.get(currentUrl, { params: currentParams });
     const currentData = currentResponse.data;
 
-    // 5-day forecast API - 3-hour intervals (Free tier)
+    // 5-day forecast API - 3-hour intervals 
     const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast`;
     const forecastParams = {
       lat: lat,
@@ -96,13 +96,13 @@ export const getWeatherForecast = async (location) => {
 
     const optimalDay = calculateOptimalDay(daily);
     
-    console.log(`✅ Weather fetched. Optimal day: Day ${optimalDay.index + 1}`);
+    console.log(` Weather fetched. Optimal day: Day ${optimalDay.index + 1}`);
 
     return {
       success: true,
       data: {
         current: current,
-        daily: daily.slice(0, 5), // Max 5 days on free tier
+        daily: daily.slice(0, 5), // Max 5 days
         optimalDay: {
           index: optimalDay.index,
           date: optimalDay.date,

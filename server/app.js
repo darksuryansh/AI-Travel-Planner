@@ -5,7 +5,8 @@ import dotenv from 'dotenv';
 
 import { firebaseAdmin } from './config/firebase.js';
 import itineraryRoutes from './routes/itinerary.js'; 
-import aiRoutes from './routes/aiIntegration.js';              
+import aiRoutes from './routes/aiIntegration.js';
+import weatherRoutes from './routes/weather.js';              
 
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -45,7 +46,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));  // Parse URL-en
 
 
 app.use('/api/itineraries', itineraryRoutes);  
-app.use('/api', aiRoutes);                      
+app.use('/api', aiRoutes);
+app.use('/api/weather', weatherRoutes);                      
 
 
 app.use(notFound);
@@ -64,7 +66,7 @@ const startServer = async () => {
     
     // Increase server timeout for long-running AI requests (2 minutes)
     server.timeout = 120000;
-    console.log(' Server timeout set to 120 seconds for AI generation');
+   
     
   } catch (error) {
     console.error(' Server failed to start:', error);
