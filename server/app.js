@@ -55,14 +55,17 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     
- 
     console.log(' Firebase: Connected');
     
-
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(' SERVER READY!');
       console.log(` Server running at: http://localhost:${PORT}`);
     });
+    
+    // Increase server timeout for long-running AI requests (2 minutes)
+    server.timeout = 120000;
+    console.log(' Server timeout set to 120 seconds for AI generation');
+    
   } catch (error) {
     console.error(' Server failed to start:', error);
     process.exit(1);
