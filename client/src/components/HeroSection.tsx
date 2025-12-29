@@ -137,7 +137,7 @@ export default function HeroSection({ onGenerate }: HeroSectionProps) {
                   type="text"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  placeholder="e.g., Paris, France or Tokyo, Japan"
+                  placeholder="e.g. A Manali trip from delhi in 20000 INR"
                   className="flex-1 bg-transparent border-none outline-none text-lg text-slate-900 dark:text-white placeholder:text-slate-400"
                 />
               </div>

@@ -68,29 +68,23 @@ export interface AQIData {
   };
 }
 
-/**
- * Get 5-day weather forecast
- */
+//  Get 5-day weather forecast
+
 export const getWeatherForecast = async (lat: number, lng: number): Promise<WeatherData> => {
   const response = await api.get('/weather/forecast', {
     params: { lat, lng }
   });
   return response.data;
 };
-
-/**
- * Get Air Quality Index
- */
+//for AQI
 export const getAirQuality = async (lat: number, lng: number): Promise<AQIData> => {
   const response = await api.get('/weather/aqi', {
     params: { lat, lng }
   });
   return response.data;
 };
+// for optimal day 
 
-/**
- * Get optimal day for visit
- */
 export const getOptimalDay = async (lat: number, lng: number) => {
   const response = await api.get('/weather/optimal-day', {
     params: { lat, lng }
@@ -98,9 +92,9 @@ export const getOptimalDay = async (lat: number, lng: number) => {
   return response.data;
 };
 
-/**
- * Get OpenWeather icon URL
- */
+
+  // Get OpenWeather icon URL
+
 export const getWeatherIconUrl = (icon: string): string => {
   return `https://openweathermap.org/img/wn/${icon}@2x.png`;
 };

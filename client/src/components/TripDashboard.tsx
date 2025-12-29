@@ -228,7 +228,7 @@ export default function TripDashboard() {
                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <Calendar className="size-4" />
                     <span>
-                      {trip.duration} days • ₹
+                      {trip.duration} days • $
                       {trip.estimatedCost?.min || trip.estimatedCost || 0}-
                       {trip.estimatedCost?.max || trip.estimatedCost || 0}
                     </span>

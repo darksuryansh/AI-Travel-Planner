@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, Download, Edit3, MapPin, Calendar, Lock, Globe, Trash2, Info, Plane, HelpCircle, Backpack, Sun, DollarSign, Camera, BookOpen, Languages, Compass } from 'lucide-react';
 import ActivityCard from './ActivityCard';
 import { Button } from './ui/button';
@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import jsPDF from 'jspdf';
+import WeatherForecast from './WeatherForecast';
 
 interface ItineraryBoardProps {
   itinerary: any;
@@ -20,10 +22,37 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
   const [isPublic, setIsPublic] = useState(itinerary?.isPublic || false);
   const [isSharing, setIsSharing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const navigate = useNavigate();
 
   console.log('🎨 ItineraryBoard received data:', itinerary);
   console.log('📅 Days data:', itinerary?.days);
+
+  // Geocode destination to get coordinates for weather
+  useEffect(() => {
+    const geocodeDestination = async () => {
+      if (!itinerary?.destination) return;
+      
+      try {
+        // Using a simple geocoding approach - you can enhance this with Google Maps API
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(itinerary.destination)}&format=json&limit=1`
+        );
+        const data = await response.json();
+        
+        if (data && data[0]) {
+          setCoordinates({
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+          });
+        }
+      } catch (error) {
+        console.error('Geocoding error:', error);
+      }
+    };
+
+    geocodeDestination();
+  }, [itinerary?.destination]);
 
   const handleShare = async () => {
     if (!itinerary?.id) {
@@ -51,8 +80,155 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
     }
   };
 
-  const handleDownload = () => {
-    toast.success('Downloading itinerary as PDF...');
+  const handleDownload = async () => {
+    try {
+      toast.info('Generating PDF...');
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      const maxWidth = pageWidth - 2 * margin;
+      let yPos = margin;
+
+      // Helper function to add text with auto page break
+      const addText = (text: string, fontSize: number = 10, isBold: boolean = false) => {
+        pdf.setFontSize(fontSize);
+        pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
+        const lines = pdf.splitTextToSize(text, maxWidth);
+        
+        lines.forEach((line: string) => {
+          if (yPos + 10 > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          pdf.text(line, margin, yPos);
+          yPos += fontSize * 0.5;
+        });
+        yPos += 3;
+      };
+
+      const addSpacer = (space: number = 5) => {
+        yPos += space;
+      };
+
+      // Title
+      addText(itinerary.title || 'Travel Itinerary', 18, true);
+      addSpacer(2);
+
+      // Destination and Duration
+      addText(`Destination: ${itinerary.destination}`, 12, true);
+      addText(`Duration: ${itinerary.duration} Days`, 12);
+      
+      if (itinerary.estimatedCost) {
+        const cost = typeof itinerary.estimatedCost === 'object'
+          ? `₹${itinerary.estimatedCost.min?.toLocaleString()} - ₹${itinerary.estimatedCost.max?.toLocaleString()}`
+          : `₹${itinerary.estimatedCost?.toLocaleString()}`;
+        addText(`Estimated Cost: ${cost}`, 12);
+      }
+      
+      addSpacer(5);
+
+      // Overview
+      if (itinerary.overview || itinerary.description) {
+        addText('Overview:', 14, true);
+        addText(itinerary.overview || itinerary.description, 10);
+        addSpacer(5);
+      }
+
+      // Best Time to Visit
+      if (itinerary.bestTimeToVisit) {
+        addText('Best Time to Visit:', 14, true);
+        addText(itinerary.bestTimeToVisit, 10);
+        addSpacer(5);
+      }
+
+      // Destination Info
+      if (itinerary.destinationInfo) {
+        if (itinerary.destinationInfo.history) {
+          addText('History:', 14, true);
+          addText(itinerary.destinationInfo.history, 10);
+          addSpacer(5);
+        }
+
+        if (itinerary.destinationInfo.famousFor && itinerary.destinationInfo.famousFor.length > 0) {
+          addText('Famous For:', 14, true);
+          addText(itinerary.destinationInfo.famousFor.join(', '), 10);
+          addSpacer(5);
+        }
+
+        if (itinerary.destinationInfo.language) {
+          addText('Language:', 14, true);
+          addText(`Primary: ${itinerary.destinationInfo.language.primary}`, 10);
+          addSpacer(5);
+        }
+      }
+
+      // Daily Itinerary
+      if (itinerary.days && itinerary.days.length > 0) {
+        addText('Daily Itinerary:', 16, true);
+        addSpacer(3);
+
+        itinerary.days.forEach((day: any, index: number) => {
+          addText(`Day ${index + 1}: ${day.title || day.name || ''}`, 14, true);
+          
+          if (day.description) {
+            addText(day.description, 10);
+          }
+
+          if (day.activities && day.activities.length > 0) {
+            day.activities.forEach((activity: any, actIndex: number) => {
+              addText(`${actIndex + 1}. ${activity.name || activity.title}`, 11, true);
+              
+              if (activity.time) {
+                addText(`   Time: ${activity.time}`, 9);
+              }
+              if (activity.description) {
+                addText(`   ${activity.description}`, 9);
+              }
+              if (activity.duration) {
+                addText(`   Duration: ${activity.duration}`, 9);
+              }
+              if (activity.cost) {
+                addText(`   Cost: ₹${activity.cost}`, 9);
+              }
+              addSpacer(2);
+            });
+          }
+          addSpacer(5);
+        });
+      }
+
+      // Travel Tips
+      if (itinerary.travelTips && itinerary.travelTips.length > 0) {
+        addText('Travel Tips:', 14, true);
+        itinerary.travelTips.forEach((tip: string, index: number) => {
+          addText(`${index + 1}. ${tip}`, 10);
+        });
+        addSpacer(5);
+      }
+
+      // Packing List
+      if (itinerary.packingList && itinerary.packingList.length > 0) {
+        addText('Packing List:', 14, true);
+        addText(itinerary.packingList.join(', '), 10);
+        addSpacer(5);
+      }
+
+      // Download
+      const fileName = `${itinerary.destination || 'itinerary'}-${itinerary.duration || 'trip'}days.pdf`.replace(/\s+/g, '-');
+      pdf.save(fileName);
+      
+      toast.success('PDF downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
@@ -132,8 +308,8 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
                       <DollarSign className="size-4 text-amber-600 dark:text-amber-400" />
                       <span className="text-sm text-amber-700 dark:text-amber-300">
                         {typeof itinerary.estimatedCost === 'object' 
-                          ? `₹${itinerary.estimatedCost.min?.toLocaleString()} - ₹${itinerary.estimatedCost.max?.toLocaleString()}`
-                          : `₹${itinerary.estimatedCost?.toLocaleString()}`
+                          ? `${itinerary.estimatedCost.min?.toLocaleString()} - ${itinerary.estimatedCost.max?.toLocaleString()}`
+                          : `${itinerary.estimatedCost?.toLocaleString()}`
                         }
                       </span>
                     </div>
@@ -182,6 +358,22 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
           </div>
         </motion.div>
 
+        {/* Weather Forecast Section */}
+        {coordinates && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <WeatherForecast 
+              latitude={coordinates.lat}
+              longitude={coordinates.lng}
+              locationName={itinerary.destination}
+            />
+          </motion.div>
+        )}
+
         {/* Additional Information Sections */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -189,7 +381,7 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
           transition={{ delay: 0.3 }}
           className="mb-8"
         >
-          <Accordion type="multiple" className="space-y-4">
+          <Accordion type="multiple" className=" space-y-4">
             {/* Best Time to Visit */}
             {itinerary.bestTimeToVisit && (
               <AccordionItem value="best-time" className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
@@ -228,7 +420,7 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
                     {typeof itinerary.estimatedCost === 'object' && itinerary.estimatedCost.breakdown && (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                         {Object.entries(itinerary.estimatedCost.breakdown).map(([key, value]: [string, any]) => (
-                          <div key={key} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                          <div key={key} className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
                             <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">{key}</p>
                             <p className="text-xl font-semibold text-slate-700 dark:text-slate-300">₹{typeof value === 'number' ? value.toLocaleString() : value}</p>
                           </div>
@@ -292,7 +484,7 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
                         {itinerary.destinationInfo.language.commonPhrases && (
                           <div className="grid md:grid-cols-2 gap-2 mt-2">
                             {itinerary.destinationInfo.language.commonPhrases.map((phrase: any, index: number) => (
-                              <div key={index} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                              <div key={index} className="p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
                                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{phrase.phrase}</p>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 italic">{phrase.local}</p>
                               </div>
@@ -501,7 +693,7 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
                 <AccordionContent className="px-6 pb-4">
                   <div className="space-y-4">
                     {itinerary.faqs.map((faq: any, index: number) => (
-                      <div key={index} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <div key={index} className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
                         <h5 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">{faq.question}</h5>
                         <p className="text-sm text-slate-600 dark:text-slate-400">{faq.answer}</p>
                       </div>
@@ -540,7 +732,9 @@ export default function ItineraryBoard({ itinerary, onReset }: ItineraryBoardPro
                           whileTap={{ scale: 0.9 }}
                           className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
                         >
-                          <Edit3 className="size-4 text-white" />
+                          {/* <Edit3 className="size-4 text-white" /> */}
+
+
                         </motion.button>
                       </div>
                     </div>
